@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LabelController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.controller</a> &gt; <span class="el_source">LabelController.java</span></div><h1>LabelController.java</h1><pre class="source lang-java linenums">
+package usyd.library_reservation_system.library_reservation_system.controller;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+        import usyd.library_reservation_system.library_reservation_system.model.Label;
+import usyd.library_reservation_system.library_reservation_system.service.LabelService;
+
+import java.util.List;
+import java.util.Optional;
+
+@RestController
+@RequestMapping(&quot;/api/labels&quot;)
+@CrossOrigin(origins = &quot;*&quot;)
+<span class="fc" id="L17">public class LabelController {</span>
+
+    @Autowired
+    private LabelService labelService;
+
+
+    @GetMapping
+    public ResponseEntity&lt;List&lt;Label&gt;&gt; getAllLabels() {
+        try {
+<span class="fc" id="L26">            List&lt;Label&gt; labels = labelService.getAllLabels();</span>
+<span class="fc" id="L27">            return ResponseEntity.ok(labels);</span>
+<span class="nc" id="L28">        } catch (Exception e) {</span>
+<span class="nc" id="L29">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;Label&gt; getLabelById(@PathVariable Integer id) {
+        try {
+<span class="fc" id="L37">            Optional&lt;Label&gt; label = labelService.getLabelById(id);</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">            if (label.isPresent()) {</span>
+<span class="fc" id="L39">                return ResponseEntity.ok(label.get());</span>
+            } else {
+<span class="fc" id="L41">                return ResponseEntity.notFound().build();</span>
+            }
+<span class="nc" id="L43">        } catch (Exception e) {</span>
+<span class="nc" id="L44">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+    @GetMapping(&quot;/name/{labelName}&quot;)
+    public ResponseEntity&lt;Label&gt; getLabelByName(@PathVariable String labelName) {
+        try {
+<span class="fc" id="L52">            Optional&lt;Label&gt; label = labelService.getLabelByName(labelName);</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">            if (label.isPresent()) {</span>
+<span class="fc" id="L54">                return ResponseEntity.ok(label.get());</span>
+            } else {
+<span class="fc" id="L56">                return ResponseEntity.notFound().build();</span>
+            }
+<span class="nc" id="L58">        } catch (Exception e) {</span>
+<span class="nc" id="L59">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+    @PostMapping
+    public ResponseEntity&lt;Object&gt; createLabel(@RequestBody Label label) {
+        try {
+<span class="fc" id="L67">            Label createdLabel = labelService.createLabel(label);</span>
+<span class="fc" id="L68">            return ResponseEntity.status(HttpStatus.CREATED).body(createdLabel);</span>
+<span class="fc" id="L69">        } catch (RuntimeException e) {</span>
+<span class="fc" id="L70">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));</span>
+<span class="nc" id="L71">        } catch (Exception e) {</span>
+<span class="nc" id="L72">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(&quot;创建标签失败&quot;));</span>
+        }
+    }
+
+
+    @PutMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;Object&gt; updateLabel(@PathVariable Integer id, @RequestBody Label labelDetails) {
+        try {
+<span class="fc" id="L80">            Label updatedLabel = labelService.updateLabel(id, labelDetails);</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">            if (updatedLabel != null) {</span>
+<span class="fc" id="L82">                return ResponseEntity.ok(updatedLabel);</span>
+            } else {
+<span class="fc" id="L84">                return ResponseEntity.notFound().build();</span>
+            }
+<span class="nc" id="L86">        } catch (RuntimeException e) {</span>
+<span class="nc" id="L87">            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponse(e.getMessage()));</span>
+<span class="nc" id="L88">        } catch (Exception e) {</span>
+<span class="nc" id="L89">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(&quot;更新标签失败&quot;));</span>
+        }
+    }
+
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;Object&gt; deleteLabel(@PathVariable Integer id) {
+        try {
+<span class="fc" id="L97">            boolean deleted = labelService.deleteLabel(id);</span>
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">            if (deleted) {</span>
+<span class="nc" id="L99">                return ResponseEntity.noContent().build();</span>
+            } else {
+<span class="fc" id="L101">                return ResponseEntity.notFound().build();</span>
+            }
+<span class="nc" id="L103">        } catch (Exception e) {</span>
+<span class="nc" id="L104">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponse(&quot;删除标签失败&quot;));</span>
+        }
+    }
+
+
+    @GetMapping(&quot;/search&quot;)
+    public ResponseEntity&lt;List&lt;Label&gt;&gt; searchLabels(@RequestParam String name) {
+        try {
+<span class="fc" id="L112">            List&lt;Label&gt; labels = labelService.searchLabelsByName(name);</span>
+<span class="fc" id="L113">            return ResponseEntity.ok(labels);</span>
+<span class="nc" id="L114">        } catch (Exception e) {</span>
+<span class="nc" id="L115">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+    @GetMapping(&quot;/ordered/create-date&quot;)
+    public ResponseEntity&lt;List&lt;Label&gt;&gt; getLabelsByCreateDate() {
+        try {
+<span class="fc" id="L123">            List&lt;Label&gt; labels = labelService.getAllLabelsByCreateDate();</span>
+<span class="fc" id="L124">            return ResponseEntity.ok(labels);</span>
+<span class="nc" id="L125">        } catch (Exception e) {</span>
+<span class="nc" id="L126">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+    @GetMapping(&quot;/ordered/name&quot;)
+    public ResponseEntity&lt;List&lt;Label&gt;&gt; getLabelsByName() {
+        try {
+<span class="fc" id="L134">            List&lt;Label&gt; labels = labelService.getAllLabelsByName();</span>
+<span class="fc" id="L135">            return ResponseEntity.ok(labels);</span>
+<span class="nc" id="L136">        } catch (Exception e) {</span>
+<span class="nc" id="L137">            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);</span>
+        }
+    }
+
+
+
+<span class="nc" id="L143">    public static class LabelNameRequest {</span>
+        private String labelName;
+
+        public String getLabelName() {
+<span class="nc" id="L147">            return labelName;</span>
+        }
+
+        public void setLabelName(String labelName) {
+<span class="nc" id="L151">            this.labelName = labelName;</span>
+<span class="nc" id="L152">        }</span>
+    }
+
+<span class="nc" id="L155">    public static class BatchLabelRequest {</span>
+        private List&lt;String&gt; labelNames;
+
+        public List&lt;String&gt; getLabelNames() {
+<span class="nc" id="L159">            return labelNames;</span>
+        }
+
+        public void setLabelNames(List&lt;String&gt; labelNames) {
+<span class="nc" id="L163">            this.labelNames = labelNames;</span>
+<span class="nc" id="L164">        }</span>
+    }
+
+    public static class ErrorResponse {
+        private String message;
+
+<span class="fc" id="L170">        public ErrorResponse(String message) {</span>
+<span class="fc" id="L171">            this.message = message;</span>
+<span class="fc" id="L172">        }</span>
+
+        public String getMessage() {
+<span class="fc" id="L175">            return message;</span>
+        }
+
+        public void setMessage(String message) {
+<span class="nc" id="L179">            this.message = message;</span>
+<span class="nc" id="L180">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

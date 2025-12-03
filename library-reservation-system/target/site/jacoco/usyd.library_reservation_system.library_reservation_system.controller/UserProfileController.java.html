@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserProfileController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.controller</a> &gt; <span class="el_source">UserProfileController.java</span></div><h1>UserProfileController.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import usyd.library_reservation_system.library_reservation_system.dto.ChangePasswordReq;
+import usyd.library_reservation_system.library_reservation_system.dto.UserProfileDTO;
+import usyd.library_reservation_system.library_reservation_system.service.UserProfileService;
+
+import java.util.Map;
+
+@RestController
+@RequestMapping(&quot;/api/users&quot;)
+@CrossOrigin(
+        origins = &quot;*&quot;,
+        methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH,
+                RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS }
+)
+@RequiredArgsConstructor
+public class UserProfileController {
+
+    private final UserProfileService userProfileService;
+
+    /**
+     * 获取用户资料（示例用路径参数；若已有登录态，推荐 GET /api/me）
+     */
+    @GetMapping(&quot;/{userId}&quot;)
+    public ResponseEntity&lt;UserProfileDTO&gt; getProfile(@PathVariable Integer userId) {
+<span class="fc" id="L30">        return ResponseEntity.ok(userProfileService.getProfile(userId));</span>
+    }
+
+    /**
+     * 修改密码（示例用路径参数；若有登录态，推荐 PATCH /api/me/password）
+     */
+    @PostMapping(&quot;/{userId}/password&quot;)
+    public ResponseEntity&lt;?&gt; changePasswordPost(@PathVariable Integer userId,
+                                                @Valid @RequestBody ChangePasswordReq req) {
+<span class="fc" id="L39">        userProfileService.changePassword(userId, req);</span>
+<span class="fc" id="L40">        return ResponseEntity.ok(Map.of(&quot;message&quot;, &quot;PASSWORD_UPDATED&quot;));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

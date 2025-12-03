@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.config</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.config;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.*;
+import usyd.library_reservation_system.library_reservation_system.service.EmailOrPhoneAlreadyUsedException;
+import usyd.library_reservation_system.library_reservation_system.service.InvalidCredentialsException;
+
+import java.util.HashMap;
+import java.util.Map;
+
+<span class="fc" id="L13">@lombok.extern.slf4j.Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L15">public class GlobalExceptionHandler {</span>
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map&lt;String, Object&gt; handleValidation(MethodArgumentNotValidException ex) {
+<span class="fc" id="L20">        Map&lt;String, Object&gt; body = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L21">        body.put(&quot;error&quot;, &quot;VALIDATION_FAILED&quot;);</span>
+<span class="fc" id="L22">        var details = new HashMap&lt;String, String&gt;();</span>
+<span class="fc" id="L23">        ex.getBindingResult().getFieldErrors().forEach(fe -&gt; details.put(fe.getField(), fe.getDefaultMessage()));</span>
+<span class="fc" id="L24">        body.put(&quot;details&quot;, details);</span>
+<span class="fc" id="L25">        return body;</span>
+    }
+
+    @ExceptionHandler(EmailOrPhoneAlreadyUsedException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map&lt;String, Object&gt; handleConflict(EmailOrPhoneAlreadyUsedException ex) {
+<span class="fc" id="L31">        return Map.of(&quot;error&quot;, &quot;ACCOUNT_CONFLICT&quot;, &quot;message&quot;, ex.getMessage());</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public Map&lt;String, Object&gt; handleGeneric(Exception ex) {
+<span class="fc" id="L37">        return Map.of(&quot;error&quot;, &quot;INTERNAL_ERROR&quot;, &quot;message&quot;, &quot;Unexpected error&quot;);</span>
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public Map&lt;String, Object&gt; handleInvalidCreds(InvalidCredentialsException ex) {
+        // ex.getField() 在你的类里默认是 &quot;global&quot;
+<span class="fc" id="L44">        return Map.of(</span>
+                &quot;error&quot;, &quot;UNAUTHORIZED&quot;,
+<span class="fc" id="L46">                &quot;field&quot;, ex.getField(),</span>
+<span class="fc" id="L47">                &quot;message&quot;, ex.getMessage()</span>
+        );
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity&lt;Map&lt;String, String&gt;&gt; handleIllegalArgument(IllegalArgumentException ex) {
+        // 把你 service 里的错误码原样返回给前端：CURRENT_PASSWORD_INCORRECT / NEW_PASSWORD_MISMATCH / ...
+<span class="fc" id="L54">        return ResponseEntity.badRequest().body(Map.of(</span>
+                &quot;error&quot;, &quot;BAD_REQUEST&quot;,
+<span class="fc" id="L56">                &quot;message&quot;, ex.getMessage()</span>
+        ));
+    }
+    
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

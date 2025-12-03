@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReservationController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.controller</a> &gt; <span class="el_source">ReservationController.java</span></div><h1>ReservationController.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.controller;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import usyd.library_reservation_system.library_reservation_system.dto.AdminReservationDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.CancelReservationDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.ReservationDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.ReservationResponseDTO;
+import usyd.library_reservation_system.library_reservation_system.service.ReservationService;
+
+import java.util.List;
+
+// Reservation.status 取值：
+// 0 = 排队中
+// 1 = 已分配/可取书
+// 2 = 已归还
+// 3 = 已取消
+// 4 = 已取书
+@RestController
+@RequestMapping(&quot;/api/reservations&quot;)
+@CrossOrigin(origins = &quot;*&quot;,
+        allowedHeaders = {&quot;*&quot;, &quot;X-USER-ID&quot;},
+        exposedHeaders = {&quot;X-USER-ID&quot;},
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PATCH, RequestMethod.DELETE, RequestMethod.OPTIONS}
+)
+public class ReservationController {
+
+    private final ReservationService reservationService;
+
+<span class="fc" id="L30">    public ReservationController(ReservationService reservationService) {</span>
+<span class="fc" id="L31">        this.reservationService = reservationService;</span>
+<span class="fc" id="L32">    }</span>
+
+    /**
+     * 用户预定书籍
+     */
+    @PostMapping(&quot;/reserve&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; reserveBook(@RequestBody ReservationDTO dto) {
+<span class="fc" id="L39">        ReservationResponseDTO response = reservationService.reserveBook(dto.getUserId(), dto.getBookId());</span>
+<span class="fc" id="L40">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 管理员确认用户取书（从状态1改为4）
+     */
+    @PostMapping(&quot;/admin/pickup/{reservationId}&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; pickupBook(@PathVariable Integer reservationId) {
+<span class="fc" id="L48">        ReservationResponseDTO response = reservationService.pickupBook(reservationId);</span>
+<span class="fc" id="L49">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 用户取消预定
+     */
+    @PostMapping(&quot;/cancel&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; cancelReservation(@RequestBody CancelReservationDTO dto) {
+<span class="fc" id="L57">        ReservationResponseDTO response = reservationService.cancelReservation(dto.getUserId(), dto.getReservationId());</span>
+<span class="fc" id="L58">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 管理员手动触发自动分配
+     */
+    @PostMapping(&quot;/auto-assign/{bookId}&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; autoAssign(@PathVariable Integer bookId) {
+<span class="fc" id="L66">        ReservationResponseDTO response = reservationService.autoAssignNextUser(bookId);</span>
+<span class="fc" id="L67">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 用户还书
+     */
+    @PostMapping(&quot;/return/{reservationId}&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; returnBook(@PathVariable Integer reservationId) {
+<span class="fc" id="L75">        ReservationResponseDTO response = reservationService.returnBook(reservationId);</span>
+<span class="fc" id="L76">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 管理员查看所有预定订单详情
+     */
+    @GetMapping(&quot;/admin/all&quot;)
+    public ResponseEntity&lt;List&lt;AdminReservationDTO&gt;&gt; getAllReservations(@RequestParam(required = false) Byte status) {
+<span class="fc" id="L84">        List&lt;AdminReservationDTO&gt; response = reservationService.getAllReservations(status);</span>
+<span class="fc" id="L85">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 管理员同意用户取书
+     */
+    @PostMapping(&quot;/admin/approve/{reservationId}&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; approveTakeBook(@PathVariable Integer reservationId) {
+<span class="fc" id="L93">        ReservationResponseDTO response = reservationService.approveTakeBook(reservationId);</span>
+<span class="fc" id="L94">        return ResponseEntity.ok(response);</span>
+    }
+
+    /**
+     * 获取用户的订阅列表
+     */
+    @GetMapping
+    public ResponseEntity&lt;List&lt;AdminReservationDTO&gt;&gt; getUserReservations(@RequestHeader(value = &quot;X-USER-ID&quot;, required = false) Integer userId) {
+<span class="fc bfc" id="L102" title="All 2 branches covered.">        if (userId == null) {</span>
+<span class="fc" id="L103">            return ResponseEntity.badRequest().build();</span>
+        }
+<span class="fc" id="L105">        List&lt;AdminReservationDTO&gt; reservations = reservationService.getUserReservations(userId);</span>
+<span class="fc" id="L106">        return ResponseEntity.ok(reservations);</span>
+    }
+
+    /**
+     * 删除/取消订阅
+     */
+    @DeleteMapping(&quot;/{reservationId}&quot;)
+    public ResponseEntity&lt;ReservationResponseDTO&gt; deleteReservation(@PathVariable Integer reservationId, @RequestHeader(value = &quot;X-USER-ID&quot;, required = false) Integer userId) {
+<span class="fc bfc" id="L114" title="All 2 branches covered.">        if (userId == null) {</span>
+<span class="fc" id="L115">            return ResponseEntity.badRequest().build();</span>
+        }
+<span class="fc" id="L117">        ReservationResponseDTO response = reservationService.cancelReservation(userId, reservationId);</span>
+<span class="fc" id="L118">        return ResponseEntity.ok(response);</span>
+    }
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

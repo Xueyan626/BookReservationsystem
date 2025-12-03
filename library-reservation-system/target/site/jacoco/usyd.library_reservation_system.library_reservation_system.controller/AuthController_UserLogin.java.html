@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController_UserLogin.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.controller</a> &gt; <span class="el_source">AuthController_UserLogin.java</span></div><h1>AuthController_UserLogin.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.*;
+import usyd.library_reservation_system.library_reservation_system.dto.*;
+import usyd.library_reservation_system.library_reservation_system.service.AuthService_UserLogin;
+
+@RestController
+@RequestMapping(&quot;/api/auth&quot;)
+@RequiredArgsConstructor
+public class AuthController_UserLogin {
+
+    private final AuthService_UserLogin authService; // 类型注入
+
+    // Step1：请求验证码（返回 challengeToken）
+    @PostMapping(&quot;/login/request-code&quot;)
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public LoginStartResponse requestLoginCode(@Valid @RequestBody LoginStartRequest req) {
+<span class="fc" id="L21">        return authService.startLogin(req);</span>
+    }
+
+    // Step2：提交验证码 + challengeToken，校验通过即登录成功
+    @PostMapping(&quot;/login/verify&quot;)
+    public LoginSuccessResponse verify(@Valid @RequestBody LoginVerifyRequest req) {
+<span class="fc" id="L27">        return authService.verifyLogin(req);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

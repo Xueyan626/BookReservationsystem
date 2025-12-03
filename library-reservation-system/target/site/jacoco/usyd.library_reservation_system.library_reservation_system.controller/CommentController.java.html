@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.controller</a> &gt; <span class="el_source">CommentController.java</span></div><h1>CommentController.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.controller;
+
+import org.springframework.http.ResponseEntity;
+import usyd.library_reservation_system.library_reservation_system.dto.AdminCommentViewDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.CommentDTO;
+import usyd.library_reservation_system.library_reservation_system.service.CommentService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/api/comments&quot;)
+<span class="fc" id="L14">public class CommentController {</span>
+
+    @Autowired
+    private CommentService commentService;
+
+    // 添加评论
+    @PostMapping(&quot;/book/{bookId}&quot;)
+    public CommentDTO addComment(@RequestBody CommentDTO dto, @PathVariable Integer bookId) {
+<span class="fc" id="L22">        return commentService.addComment(dto, bookId);</span>
+    }
+
+    // 查询某本书的评论（仅显示status=1）
+    @GetMapping(&quot;/book/{bookId}&quot;)
+    public List&lt;CommentDTO&gt; getCommentsByBookId(@PathVariable Integer bookId) {
+<span class="fc" id="L28">        return commentService.getCommentsByBookId(bookId);</span>
+    }
+
+    // 管理员查看所有评论
+    @GetMapping(&quot;/book/{bookId}/all&quot;)
+    public List&lt;CommentDTO&gt; getAllCommentsByBookId(@PathVariable Integer bookId,
+                                                   @RequestParam Byte authorType) {
+<span class="fc" id="L35">        return commentService.getAllCommentsByBookId(bookId, authorType);</span>
+    }
+
+    // 屏蔽评论（仅管理员）
+    @PutMapping(&quot;/hide/{commentId}&quot;)
+    public ResponseEntity&lt;String&gt; hideComment(@PathVariable Integer commentId,
+                                              @RequestParam Byte authorType) {
+<span class="fc" id="L42">        commentService.hideComment(commentId, authorType);</span>
+<span class="fc" id="L43">        return ResponseEntity.noContent().build();</span>
+    }
+
+    // 恢复评论（仅管理员）
+    @PutMapping(&quot;/restore/{commentId}&quot;)
+    public ResponseEntity&lt;String&gt; restoreComment(@PathVariable Integer commentId,
+                                                 @RequestParam Byte authorType) {
+<span class="fc" id="L50">        commentService.restoreComment(commentId, authorType);</span>
+<span class="fc" id="L51">        return ResponseEntity.noContent().build();</span>
+    }
+
+    @GetMapping(&quot;/admin/all&quot;)
+    public List&lt;AdminCommentViewDTO&gt; getAllCommentsForAdmin(@RequestParam Byte authorType) {
+<span class="fc" id="L56">        return commentService.getAllCommentsForAdmin(authorType);</span>
+    }
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
