@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: usyd.library_reservation_system.library_reservation_system.service.LabelServiceTest
+-------------------------------------------------------------------------------
+Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.085 s -- in usyd.library_reservation_system.library_reservation_system.service.LabelServiceTest

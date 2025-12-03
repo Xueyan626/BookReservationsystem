@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: usyd.library_reservation_system.library_reservation_system.service.ChatServiceTest
+-------------------------------------------------------------------------------
+Tests run: 74, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.668 s -- in usyd.library_reservation_system.library_reservation_system.service.ChatServiceTest

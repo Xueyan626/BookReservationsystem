@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: usyd.library_reservation_system.library_reservation_system.config.GlobalExceptionHandlerTest
+-------------------------------------------------------------------------------
+Tests run: 20, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.257 s -- in usyd.library_reservation_system.library_reservation_system.config.GlobalExceptionHandlerTest

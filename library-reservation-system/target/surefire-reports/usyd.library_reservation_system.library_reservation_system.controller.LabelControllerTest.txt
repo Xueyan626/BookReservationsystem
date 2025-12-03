@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: usyd.library_reservation_system.library_reservation_system.controller.LabelControllerTest
+-------------------------------------------------------------------------------
+Tests run: 16, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.579 s -- in usyd.library_reservation_system.library_reservation_system.controller.LabelControllerTest

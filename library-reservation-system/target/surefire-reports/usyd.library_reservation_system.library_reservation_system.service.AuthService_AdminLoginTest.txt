@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: usyd.library_reservation_system.library_reservation_system.service.AuthService_AdminLoginTest
+-------------------------------------------------------------------------------
+Tests run: 0, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.591 s -- in usyd.library_reservation_system.library_reservation_system.service.AuthService_AdminLoginTest
