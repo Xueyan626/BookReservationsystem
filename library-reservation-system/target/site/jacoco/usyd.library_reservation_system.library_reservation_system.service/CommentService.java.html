@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CommentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">CommentService.java</span></div><h1>CommentService.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import usyd.library_reservation_system.library_reservation_system.dto.AdminCommentViewDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.CommentDTO;
+import usyd.library_reservation_system.library_reservation_system.model.Comment;
+import usyd.library_reservation_system.library_reservation_system.repository.CommentRepository;
+import usyd.library_reservation_system.library_reservation_system.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+<span class="fc" id="L15">public class CommentService {</span>
+
+    @Autowired
+    private CommentRepository commentRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    // 添加评论
+    public CommentDTO addComment(CommentDTO dto, Integer bookId) {
+<span class="fc" id="L25">        Comment comment = new Comment();</span>
+<span class="fc" id="L26">        comment.setBookId(bookId);</span>
+<span class="fc" id="L27">        comment.setContent(dto.getContent());</span>
+<span class="fc" id="L28">        comment.setAuthorId(dto.getAuthorId());</span>
+<span class="fc" id="L29">        comment.setAuthorType(dto.getAuthorType());</span>
+<span class="fc" id="L30">        comment.setStatus((byte) 1); // 默认可见</span>
+
+<span class="fc" id="L32">        Comment saved = commentRepository.save(comment);</span>
+
+<span class="fc" id="L34">        dto.setCommentId(saved.getCommentId());</span>
+<span class="fc" id="L35">        dto.setStatus(saved.getStatus());</span>
+<span class="fc" id="L36">        dto.setCreateDate(saved.getCreateDate());</span>
+<span class="fc" id="L37">        return dto;</span>
+    }
+
+    // 获取某本书的未屏蔽评论
+    public List&lt;CommentDTO&gt; getCommentsByBookId(Integer bookId) {
+<span class="fc" id="L42">        return commentRepository.findByBookIdAndStatus(bookId, (byte) 1)</span>
+<span class="fc" id="L43">                .stream()</span>
+<span class="fc" id="L44">                .map(c -&gt; {</span>
+<span class="fc" id="L45">                    CommentDTO dto = new CommentDTO();</span>
+<span class="fc" id="L46">                    dto.setCommentId(c.getCommentId());</span>
+<span class="fc" id="L47">                    dto.setBookId(c.getBookId());</span>
+<span class="fc" id="L48">                    dto.setContent(c.getContent());</span>
+<span class="fc" id="L49">                    dto.setAuthorId(c.getAuthorId());</span>
+<span class="fc" id="L50">                    dto.setAuthorType(c.getAuthorType());</span>
+<span class="fc" id="L51">                    dto.setStatus(c.getStatus());</span>
+<span class="fc" id="L52">                    dto.setCreateDate(c.getCreateDate());</span>
+                    
+                    // 查询用户名
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">                    if (c.getAuthorId() != null) {</span>
+<span class="fc" id="L56">                        userRepository.findById(c.getAuthorId())</span>
+<span class="fc" id="L57">                                .ifPresent(user -&gt; dto.setAuthorName(user.getNickname()));</span>
+                    }
+                    
+<span class="fc" id="L60">                    return dto;</span>
+                })
+<span class="fc" id="L62">                .collect(Collectors.toList());</span>
+    }
+
+    // 管理员：查看所有评论（包括被屏蔽的）
+    public List&lt;CommentDTO&gt; getAllCommentsByBookId(Integer bookId, Byte authorType) {
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (authorType != 1) {</span>
+<span class="fc" id="L68">            throw new RuntimeException(&quot;没有权限查看全部评论&quot;);</span>
+        }
+
+<span class="fc" id="L71">        return commentRepository.findByBookId(bookId)</span>
+<span class="fc" id="L72">                .stream()</span>
+<span class="fc" id="L73">                .map(this::convertToDTO)</span>
+<span class="fc" id="L74">                .collect(Collectors.toList());</span>
+    }
+
+    // 屏蔽评论（仅管理员）
+    public void hideComment(Integer commentId, Byte authorType) {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        if (authorType != 1) {</span>
+<span class="fc" id="L80">            throw new RuntimeException(&quot;No permission to hide comments&quot;);</span>
+        }
+<span class="fc" id="L82">        commentRepository.softDeleteComment(commentId);</span>
+<span class="fc" id="L83">    }</span>
+
+    // 恢复评论（仅管理员）
+    public void restoreComment(Integer commentId, Byte authorType) {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (authorType != 1) {</span>
+<span class="fc" id="L88">            throw new RuntimeException(&quot;没有权限恢复评论&quot;);</span>
+        }
+<span class="fc" id="L90">        commentRepository.restoreComment(commentId);</span>
+<span class="fc" id="L91">    }</span>
+
+    public List&lt;AdminCommentViewDTO&gt; getAllCommentsForAdmin(Byte authorType) {
+<span class="fc bfc" id="L94" title="All 2 branches covered.">        if (authorType != 1) {</span>
+<span class="fc" id="L95">            throw new RuntimeException(&quot;没有权限查看所有评论&quot;);</span>
+        }
+<span class="fc" id="L97">        return commentRepository.findAllCommentsWithBookAndUser();</span>
+    }
+
+
+    // DTO 转换工具方法
+    private CommentDTO convertToDTO(Comment c) {
+<span class="fc" id="L103">        CommentDTO dto = new CommentDTO();</span>
+<span class="fc" id="L104">        dto.setCommentId(c.getCommentId());</span>
+<span class="fc" id="L105">        dto.setBookId(c.getBookId());</span>
+<span class="fc" id="L106">        dto.setContent(c.getContent());</span>
+<span class="fc" id="L107">        dto.setAuthorId(c.getAuthorId());</span>
+<span class="fc" id="L108">        dto.setAuthorType(c.getAuthorType());</span>
+<span class="fc" id="L109">        dto.setStatus(c.getStatus());</span>
+<span class="fc" id="L110">        dto.setCreateDate(c.getCreateDate());</span>
+<span class="fc" id="L111">        return dto;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

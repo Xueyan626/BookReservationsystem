@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthService_UserLogin.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">AuthService_UserLogin.java</span></div><h1>AuthService_UserLogin.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import usyd.library_reservation_system.library_reservation_system.dto.LoginStartRequest;
+import usyd.library_reservation_system.library_reservation_system.dto.LoginStartResponse;
+import usyd.library_reservation_system.library_reservation_system.dto.LoginSuccessResponse;
+import usyd.library_reservation_system.library_reservation_system.dto.LoginVerifyRequest;
+import usyd.library_reservation_system.library_reservation_system.repository.UserRepository;
+
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HexFormat;
+import java.util.Map;
+
+
+@Service
+@RequiredArgsConstructor
+public class AuthService_UserLogin {
+
+    private final UserRepository userRepo;
+    private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
+    private final TokenService tokenService;
+
+    @Value(&quot;${app.login.code-ttl-minutes:10}&quot;)
+    private int codeTtlMinutes;
+
+    @Value(&quot;${app.login.code-length:6}&quot;)
+    private int codeLength;
+
+
+    public LoginStartResponse startLogin(LoginStartRequest req) {
+<span class="fc" id="L38">        final String email = req.email().trim().toLowerCase();</span>
+
+        // 为了不泄露账号存在性：即便用户不存在也返回“已发送”文案
+        // To avoid user enumeration, do not reveal whether the email exists.
+<span class="fc" id="L42">        var userOpt = userRepo.findByEmailIgnoreCase(email);</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (userOpt.isEmpty()) {</span>
+<span class="fc" id="L44">            var jwt = tokenService.sign(</span>
+<span class="fc" id="L45">                    Map.of(</span>
+                            &quot;email&quot;, email,
+                            // 不存在账号时不放 userId；codeHash 置为 NA，后续 verify 会失败
+                            &quot;codeHash&quot;, &quot;NA&quot;
+                    ),
+<span class="fc" id="L50">                    Instant.now().plus(codeTtlMinutes, ChronoUnit.MINUTES)</span>
+            );
+<span class="fc" id="L52">            return new LoginStartResponse(&quot;login code sent&quot;, jwt);</span>
+        }
+
+<span class="fc" id="L55">        var user = userOpt.get();</span>
+
+        // 生成数字验证码 / Generate numeric code
+<span class="fc" id="L58">        String code = generateNumericCode(codeLength);</span>
+
+        // 发送邮件（调试期可先注释并打印日志以排查 SMTP 配置）
+        // During debugging, you may log it instead of sending real email.
+<span class="fc" id="L62">        emailService.sendLoginCode(user.getEmail(), code, codeTtlMinutes);</span>
+
+        // 将验证码哈希放进 token，避免明文存储 / store only hash in token
+<span class="fc" id="L65">        String codeHash = sha256Hex(code);</span>
+<span class="fc" id="L66">        var exp = Instant.now().plus(codeTtlMinutes, ChronoUnit.MINUTES);</span>
+
+<span class="fc" id="L68">        var jwt = tokenService.sign(</span>
+<span class="fc" id="L69">                Map.of(</span>
+<span class="fc" id="L70">                        &quot;userId&quot;, user.getUserId(),</span>
+<span class="fc" id="L71">                        &quot;email&quot;, user.getEmail(),</span>
+                        &quot;codeHash&quot;, codeHash
+                ),
+                exp
+        );
+
+<span class="fc" id="L77">        return new LoginStartResponse(&quot;login code sent&quot;, jwt);</span>
+    }
+
+    /**
+     * Step 2: 完成登录——校验 challengeToken + code + email + password
+     * Complete login by verifying token, code, email and password.
+     */
+    public LoginSuccessResponse verifyLogin(LoginVerifyRequest req) {
+        final Map&lt;String,Object&gt; claims;
+        try {
+<span class="fc" id="L87">            claims = tokenService.verify(req.challengeToken());</span>
+<span class="fc" id="L88">        } catch (io.jsonwebtoken.JwtException e) {</span>
+            // token 过期/签名错误/格式错误
+<span class="fc" id="L90">            throw new InvalidCredentialsException(&quot;token&quot;, &quot;Invalid or expired token&quot;);</span>
+<span class="fc" id="L91">        }</span>
+
+        // 1) email must match token
+<span class="fc" id="L94">        var emailInToken = ((String) claims.get(&quot;email&quot;)).toLowerCase();</span>
+<span class="fc" id="L95">        var emailInput = req.email().trim().toLowerCase();</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if (!emailInToken.equals(emailInput)) {</span>
+<span class="fc" id="L97">            throw new InvalidCredentialsException(&quot;email&quot;, &quot;Email does not match the token&quot;);</span>
+        }
+
+        // 2) verify code by comparing hashes
+<span class="fc" id="L101">        var codeHashInToken = (String) claims.get(&quot;codeHash&quot;);</span>
+<span class="fc" id="L102">        String inputHash = sha256Hex(req.code().trim());</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">        if (!inputHash.equals(codeHashInToken)) {</span>
+<span class="nc" id="L104">            throw new InvalidCredentialsException(&quot;code&quot;, &quot;Verification code is incorrect&quot;);</span>
+        }
+
+        // 3) load user &amp; verify password
+<span class="fc" id="L108">        var user = userRepo.findByEmailIgnoreCase(emailInput)</span>
+<span class="pc" id="L109">                .orElseThrow(() -&gt; new InvalidCredentialsException(&quot;user&quot;, &quot;User not found&quot;));</span>
+
+<span class="pc bpc" id="L111" title="1 of 2 branches missed.">        if (!Boolean.TRUE.equals(user.getIsActive())) {</span>
+<span class="nc" id="L112">            throw new InvalidCredentialsException(&quot;user&quot;, &quot;Account is inactive&quot;);</span>
+        }
+
+<span class="fc bfc" id="L115" title="All 2 branches covered.">        if (!passwordEncoder.matches(req.password(), user.getPasswordHash())) {</span>
+<span class="fc" id="L116">            throw new InvalidCredentialsException(&quot;password&quot;, &quot;Password is incorrect&quot;);</span>
+        }
+
+        // 4) success
+<span class="fc" id="L120">        return new LoginSuccessResponse(</span>
+                &quot;successfully login!&quot;,
+<span class="fc" id="L122">                user.getUserId(),</span>
+<span class="fc" id="L123">                user.getNickname(),</span>
+<span class="fc" id="L124">                user.getEmail()</span>
+        );
+    }
+
+
+    // ======== helpers ========
+
+    private String generateNumericCode(int len) {
+<span class="fc" id="L132">        var rnd = new SecureRandom();</span>
+<span class="fc" id="L133">        var sb = new StringBuilder(len);</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        for (int i = 0; i &lt; len; i++) sb.append(rnd.nextInt(10));</span>
+<span class="fc" id="L135">        return sb.toString();</span>
+    }
+
+    private String sha256Hex(String s) {
+        try {
+<span class="fc" id="L140">            var md = MessageDigest.getInstance(&quot;SHA-256&quot;);</span>
+<span class="fc" id="L141">            return HexFormat.of().formatHex(md.digest(s.getBytes()));</span>
+<span class="nc" id="L142">        } catch (Exception e) {</span>
+<span class="nc" id="L143">            throw new RuntimeException(e);</span>
+        }
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

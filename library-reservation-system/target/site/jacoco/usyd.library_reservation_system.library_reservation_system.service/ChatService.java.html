@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ChatService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">ChatService.java</span></div><h1>ChatService.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import usyd.library_reservation_system.library_reservation_system.model.Book;
+import usyd.library_reservation_system.library_reservation_system.model.Label;
+import usyd.library_reservation_system.library_reservation_system.repository.BookRepository;
+import usyd.library_reservation_system.library_reservation_system.repository.LabelRepository;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class ChatService {
+
+    private final RestTemplate restTemplate;
+    private final BookRepository bookRepository;
+    private final LabelRepository labelRepository;
+    
+    @Value(&quot;${openai.api.key:your-api-key-here}&quot;)
+    private String apiKey;
+    
+    @Value(&quot;${openai.api.url:https://api.openai.com/v1/chat/completions}&quot;)
+    private String apiUrl;
+
+    @Autowired
+<span class="fc" id="L29">    public ChatService(BookRepository bookRepository, LabelRepository labelRepository) {</span>
+<span class="fc" id="L30">        this.restTemplate = new RestTemplate();</span>
+<span class="fc" id="L31">        this.bookRepository = bookRepository;</span>
+<span class="fc" id="L32">        this.labelRepository = labelRepository;</span>
+<span class="fc" id="L33">    }</span>
+
+    public String getChatResponse(String userMessage) {
+        try {
+<span class="fc" id="L37">            String lowerMessage = userMessage.toLowerCase().trim();</span>
+            
+            // 检测是否是书籍推荐请求
+<span class="fc bfc" id="L40" title="All 2 branches covered.">            if (isRecommendationRequest(lowerMessage)) {</span>
+<span class="fc" id="L41">                return getBookRecommendations(userMessage, lowerMessage);</span>
+            }
+            
+            // 其他类型的请求
+<span class="fc" id="L45">            return getFriendlyResponse(userMessage, lowerMessage);</span>
+            
+<span class="fc" id="L47">        } catch (Exception e) {</span>
+<span class="fc" id="L48">            e.printStackTrace();</span>
+<span class="fc" id="L49">            return &quot;😅 Oops! I encountered a small issue. Could you try again? I'm here to help!&quot;;</span>
+        }
+    }
+    
+    /**
+     * 判断是否为书籍推荐请求
+     */
+    private boolean isRecommendationRequest(String lowerMessage) {
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        return lowerMessage.contains(&quot;推荐&quot;) || </span>
+<span class="pc bpc" id="L58" title="1 of 2 branches missed.">               lowerMessage.contains(&quot;推荐一些&quot;) ||</span>
+<span class="pc bpc" id="L59" title="1 of 2 branches missed.">               lowerMessage.contains(&quot;推荐一些书&quot;) ||</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">               lowerMessage.contains(&quot;recommend&quot;) ||</span>
+<span class="pc bpc" id="L61" title="1 of 2 branches missed.">               lowerMessage.contains(&quot;recommend books&quot;) ||</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">               lowerMessage.contains(&quot;recommend some&quot;) ||</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">               lowerMessage.contains(&quot;what books&quot;) ||</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">               lowerMessage.contains(&quot;suggest books&quot;) ||</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">               lowerMessage.contains(&quot;好书&quot;) ||</span>
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">               lowerMessage.contains(&quot;有什么书&quot;);</span>
+    }
+    
+    /**
+     * 从数据库获取书籍推荐（支持关键词）
+     */
+    private String getBookRecommendations(String userMessage, String lowerMessage) {
+        try {
+            List&lt;Book&gt; recommendations;
+<span class="fc" id="L75">            String categoryName = null;</span>
+            
+            // 检测关键词，查找对应的类别
+<span class="fc" id="L78">            List&lt;String&gt; allLabels = labelRepository.findAll().stream()</span>
+<span class="fc" id="L79">                .map(Label::getLabelName)</span>
+<span class="fc" id="L80">                .map(String::toLowerCase)</span>
+<span class="fc" id="L81">                .collect(Collectors.toList());</span>
+            
+            // 检查用户消息中是否包含类别关键词
+<span class="fc" id="L84">            Optional&lt;String&gt; matchedLabel = allLabels.stream()</span>
+<span class="fc" id="L85">                .filter(label -&gt; lowerMessage.contains(label))</span>
+<span class="fc" id="L86">                .findFirst();</span>
+            
+<span class="fc bfc" id="L88" title="All 2 branches covered.">            if (matchedLabel.isPresent()) {</span>
+                // 找到了类别，按类别推荐
+<span class="fc" id="L90">                categoryName = matchedLabel.get();</span>
+<span class="fc" id="L91">                Optional&lt;Label&gt; label = labelRepository.findByLabelName(categoryName);</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">                if (label.isPresent()) {</span>
+<span class="fc" id="L93">                    List&lt;Book&gt; booksByLabel = bookRepository.findByLabelId(label.get().getLabelId());</span>
+                    // 按收藏数排序
+<span class="fc" id="L95">                    recommendations = booksByLabel.stream()</span>
+<span class="fc" id="L96">                        .sorted((a, b) -&gt; Integer.compare(b.getNumFavorite(), a.getNumFavorite()))</span>
+<span class="fc" id="L97">                        .limit(5)</span>
+<span class="fc" id="L98">                        .collect(Collectors.toList());</span>
+<span class="fc" id="L99">                } else {</span>
+<span class="fc" id="L100">                    recommendations = getDefaultRecommendations();</span>
+                }
+<span class="fc" id="L102">            } else {</span>
+                // 没有指定类别，推荐热门书籍
+<span class="fc" id="L104">                recommendations = getDefaultRecommendations();</span>
+            }
+            
+<span class="fc bfc" id="L107" title="All 2 branches covered.">            if (recommendations.isEmpty()) {</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">                if (categoryName != null) {</span>
+<span class="fc" id="L109">                    return String.format(&quot;😊 Sorry, I couldn't find any books in the '%s' category. &quot; +</span>
+                        &quot;Would you like me to recommend some popular books instead? &quot; +
+                        &quot;Just ask me to 'recommend some books'!&quot;, categoryName);
+                }
+<span class="fc" id="L113">                return &quot;📚 Oops! Our collection is currently empty. &quot; +</span>
+                    &quot;Please contact our administrators to add more books.&quot;;
+            }
+            
+            // 构建友好的推荐消息
+<span class="fc" id="L118">            StringBuilder response = new StringBuilder();</span>
+<span class="fc" id="L119">            response.append(&quot;🌟 &quot;);</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">            if (categoryName != null) {</span>
+<span class="fc" id="L121">                response.append(String.format(&quot;Here are some great '%s' books I found:\n\n&quot;, categoryName));</span>
+            } else {
+<span class="fc" id="L123">                response.append(&quot;Here are some popular books I'd recommend:\n\n&quot;);</span>
+            }
+            
+<span class="fc" id="L126">            int index = 1;</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            for (Book book : recommendations) {</span>
+<span class="fc bfc" id="L128" title="All 6 branches covered.">                String emoji = index == 1 ? &quot;🥇&quot; : index == 2 ? &quot;🥈&quot; : index == 3 ? &quot;🥉&quot; : &quot;📖&quot;;</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">                String availability = book.getQuantity() &gt; 0 ? &quot;✅ Available Now&quot; : &quot;⏳ Reserved&quot;;</span>
+                
+<span class="fc" id="L131">                response.append(String.format(&quot;%s %d. **%s**\n&quot;, emoji, index++, book.getBookName()));</span>
+<span class="fc" id="L132">                response.append(String.format(&quot;   👤 Author: %s\n&quot;, book.getAuthor()));</span>
+<span class="fc" id="L133">                response.append(String.format(&quot;   📊 Status: %s\n&quot;, availability));</span>
+                
+<span class="fc bfc" id="L135" title="All 4 branches covered.">                if (book.getDescription() != null &amp;&amp; !book.getDescription().isEmpty()) {</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">                    String shortDesc = book.getDescription().length() &gt; 70 </span>
+<span class="fc" id="L137">                        ? book.getDescription().substring(0, 70) + &quot;...&quot; </span>
+<span class="fc" id="L138">                        : book.getDescription();</span>
+<span class="fc" id="L139">                    response.append(String.format(&quot;   📝 About: %s\n&quot;, shortDesc));</span>
+                }
+                
+<span class="pc bpc" id="L142" title="1 of 4 branches missed.">                if (book.getNumFavorite() != null &amp;&amp; book.getNumFavorite() &gt; 0) {</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">                    String starLevel = book.getNumFavorite() &gt; 10 ? &quot;⭐⭐⭐&quot; : </span>
+<span class="fc bfc" id="L144" title="All 2 branches covered.">                                     book.getNumFavorite() &gt; 5 ? &quot;⭐⭐&quot; : &quot;⭐&quot;;</span>
+<span class="fc" id="L145">                    response.append(String.format(&quot;   %s Loved by %d readers!\n&quot;, starLevel, book.getNumFavorite()));</span>
+                }
+<span class="fc" id="L147">                response.append(&quot;\n&quot;);</span>
+<span class="fc" id="L148">            }</span>
+            
+<span class="fc" id="L150">            response.append(&quot;💡 Tip: Click any book to see details and reserve it!\n&quot;);</span>
+<span class="fc" id="L151">            response.append(&quot;🎯 Want a different category? Just ask me to 'recommend some [category] books'&quot;);</span>
+            
+<span class="fc" id="L153">            return response.toString();</span>
+            
+<span class="fc" id="L155">        } catch (Exception e) {</span>
+<span class="fc" id="L156">            e.printStackTrace();</span>
+<span class="fc" id="L157">            return &quot;😅 Sorry! I had trouble finding books. &quot; +</span>
+                &quot;Could you try again? I'm here to help!&quot;;
+        }
+    }
+    
+    /**
+     * 获取默认推荐（热门书籍）
+     */
+    private List&lt;Book&gt; getDefaultRecommendations() {
+<span class="fc" id="L166">        List&lt;Book&gt; popularBooks = bookRepository.findMostPopularBooks();</span>
+<span class="fc" id="L167">        return popularBooks.stream()</span>
+<span class="fc" id="L168">                .limit(5)</span>
+<span class="fc" id="L169">                .collect(Collectors.toList());</span>
+    }
+    
+    /**
+     * 友好的响应处理
+     */
+    private String getFriendlyResponse(String userMessage, String lowerMessage) {
+        // 问候语
+<span class="fc bfc" id="L177" title="All 4 branches covered.">        if (lowerMessage.contains(&quot;hello&quot;) || lowerMessage.contains(&quot;hi&quot;) || </span>
+<span class="pc bpc" id="L178" title="1 of 4 branches missed.">            lowerMessage.contains(&quot;你好&quot;) || lowerMessage.contains(&quot;哈喽&quot;)) {</span>
+<span class="fc" id="L179">            return &quot;👋 Hi there! I'm your friendly library AI assistant!\n\n&quot; +</span>
+                   &quot;I can help you with:\n&quot; +
+                   &quot;✨ Book recommendations - ask 'recommend some books'\n&quot; +
+                   &quot;🎯 Category-specific books - ask 'recommend some [category] books'\n&quot; +
+                   &quot;📖 Learn how to reserve books\n&quot; +
+                   &quot;🔍 Search for specific titles\n&quot; +
+                   &quot;❓ General questions about our library\n\n&quot; +
+                   &quot;What can I do for you today? 😊&quot;;
+        }
+        
+        // 帮助请求
+<span class="fc bfc" id="L190" title="All 4 branches covered.">        else if (lowerMessage.contains(&quot;help&quot;) || lowerMessage.contains(&quot;帮助&quot;) || </span>
+<span class="fc bfc" id="L191" title="All 2 branches covered.">                 lowerMessage.contains(&quot;能做什么&quot;)) {</span>
+<span class="fc" id="L192">            return &quot;🎯 I'm here to help! Here's what I can do:\n\n&quot; +</span>
+                   &quot;📚 **Book Recommendations**\n&quot; +
+                   &quot;   • Ask: 'recommend some books' for popular books\n&quot; +
+                   &quot;   • Or specify: 'recommend some science books'\n\n&quot; +
+                   &quot;🔍 **Search Books**\n&quot; +
+                   &quot;   • Use the search bar at the top to find books by name, author, or keywords\n\n&quot; +
+                   &quot;📖 **Reservations**\n&quot; +
+                   &quot;   • Learn how to reserve and pick up books\n\n&quot; +
+                   &quot;❓ **Questions**\n&quot; +
+                   &quot;   • Ask me anything about our library system!\n\n&quot; +
+                   &quot;Ready to get started? 😊&quot;;
+        }
+        
+        // 预约相关
+<span class="pc bpc" id="L206" title="1 of 4 branches missed.">        else if (lowerMessage.contains(&quot;reserve&quot;) || lowerMessage.contains(&quot;reservation&quot;) ||</span>
+<span class="pc bpc" id="L207" title="1 of 4 branches missed.">                 lowerMessage.contains(&quot;订阅&quot;) || lowerMessage.contains(&quot;预约&quot;) ||</span>
+<span class="pc bpc" id="L208" title="1 of 4 branches missed.">                 lowerMessage.contains(&quot;borrow&quot;) || lowerMessage.contains(&quot;借书&quot;)) {</span>
+<span class="fc" id="L209">            return &quot;📖 Great question about reservations!\n\n&quot; +</span>
+                   &quot;Here's how it works:\n&quot; +
+                   &quot;1️⃣ Browse books and find one you like\n&quot; +
+                   &quot;2️⃣ Click on the book to see details\n&quot; +
+                   &quot;3️⃣ Click 'Subscribe' button to reserve\n&quot; +
+                   &quot;4️⃣ You'll get notified when it's ready!\n\n&quot; +
+                   &quot;💡 The status will show 'Available' when ready for pickup.\n\n&quot; +
+                   &quot;Need book recommendations? Just ask me to 'recommend some books'! 😊&quot;;
+        }
+        
+        // 搜索相关
+<span class="fc bfc" id="L220" title="All 4 branches covered.">        else if (lowerMessage.contains(&quot;search&quot;) || lowerMessage.contains(&quot;搜索&quot;) ||</span>
+<span class="pc bpc" id="L221" title="1 of 4 branches missed.">                 lowerMessage.contains(&quot;find&quot;) || lowerMessage.contains(&quot;找书&quot;) ||</span>
+<span class="pc bpc" id="L222" title="1 of 2 branches missed.">                 lowerMessage.contains(&quot;如何找书&quot;)) {</span>
+<span class="fc" id="L223">            return &quot;🔍 Let me help you find books!\n\n&quot; +</span>
+                   &quot;You can search in two ways:\n\n&quot; +
+                   &quot;1️⃣ **Use the search bar** at the top of the page:\n&quot; +
+                   &quot;   • Type book names\n&quot; +
+                   &quot;   • Type author names\n&quot; +
+                   &quot;   • Use keywords\n\n&quot; +
+                   &quot;2️⃣ **Ask me for recommendations**:\n&quot; +
+                   &quot;   • 'recommend some books' - Popular books\n&quot; +
+                   &quot;   • 'recommend some [category] books' - By category\n\n&quot; +
+                   &quot;Try searching now! 🎯&quot;;
+        }
+        
+        // 热门书籍
+<span class="pc bpc" id="L236" title="1 of 4 branches missed.">        else if (lowerMessage.contains(&quot;popular&quot;) || lowerMessage.contains(&quot;热门&quot;) ||</span>
+<span class="pc bpc" id="L237" title="1 of 4 branches missed.">                 lowerMessage.contains(&quot;trending&quot;) || lowerMessage.contains(&quot;流行&quot;)) {</span>
+<span class="fc" id="L238">            return getBookRecommendations(userMessage, lowerMessage);</span>
+        }
+        
+        // 类别询问
+<span class="pc bpc" id="L242" title="2 of 4 branches missed.">        else if (lowerMessage.contains(&quot;category&quot;) || lowerMessage.contains(&quot;类别&quot;) ||</span>
+<span class="pc bpc" id="L243" title="1 of 4 branches missed.">                 lowerMessage.contains(&quot;categories&quot;) || lowerMessage.contains(&quot;分类&quot;)) {</span>
+<span class="fc" id="L244">            List&lt;String&gt; allLabels = labelRepository.findAll().stream()</span>
+<span class="fc" id="L245">                .map(Label::getLabelName)</span>
+<span class="fc" id="L246">                .collect(Collectors.toList());</span>
+            
+<span class="fc bfc" id="L248" title="All 2 branches covered.">            if (allLabels.isEmpty()) {</span>
+<span class="fc" id="L249">                return &quot;📂 Currently, there are no categories set up.\n&quot; +</span>
+                       &quot;But you can still browse all our books!\n\n&quot; +
+                       &quot;Ask me to 'recommend some books' to see popular ones! 😊&quot;;
+            }
+            
+<span class="fc" id="L254">            StringBuilder response = new StringBuilder(&quot;📂 Here are our book categories:\n\n&quot;);</span>
+<span class="fc bfc" id="L255" title="All 2 branches covered.">            for (int i = 0; i &lt; allLabels.size(); i++) {</span>
+<span class="fc" id="L256">                response.append(String.format(&quot;%d. %s\n&quot;, i + 1, allLabels.get(i)));</span>
+            }
+<span class="fc" id="L258">            response.append(&quot;\n💡 Want books from a specific category? Try:\n&quot;);</span>
+<span class="fc" id="L259">            response.append(&quot;   'recommend some &quot; + allLabels.get(0) + &quot; books'&quot;);</span>
+            
+<span class="fc" id="L261">            return response.toString();</span>
+        }
+        
+        // Default response - friendly fallback
+        else {
+<span class="fc" id="L266">            return &quot;😊 I'm here to help!\n\n&quot; +</span>
+                   &quot;Here's what you can ask me:\n\n&quot; +
+                   &quot;📚 **Book Recommendations**\n&quot; +
+                   &quot;   • 'recommend some books' - Popular books\n&quot; +
+                   &quot;   • 'recommend some [category] books' - By category\n\n&quot; +
+                   &quot;🔍 **Search**\n&quot; +
+                   &quot;   • 'How to search for books?'\n\n&quot; +
+                   &quot;📖 **Reservations**\n&quot; +
+                   &quot;   • 'How do I reserve a book?'\n\n&quot; +
+                   &quot;💬 **General Help**\n&quot; +
+                   &quot;   • 'What can you help me with?'\n\n&quot; +
+                   &quot;What would you like to know? 😊&quot;;
+        }
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserProfileService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">UserProfileService.java</span></div><h1>UserProfileService.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import usyd.library_reservation_system.library_reservation_system.dto.ChangePasswordReq;
+import usyd.library_reservation_system.library_reservation_system.dto.UserProfileDTO;
+import usyd.library_reservation_system.library_reservation_system.model.UserEntity;
+import usyd.library_reservation_system.library_reservation_system.repository.UserRepository;
+
+import java.time.format.DateTimeFormatter;
+
+@Service
+@RequiredArgsConstructor
+public class UserProfileService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public UserProfileDTO getProfile(Integer userId) {
+<span class="fc" id="L21">        UserEntity u = userRepository.findById(userId)</span>
+<span class="fc" id="L22">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;User not found: &quot; + userId));</span>
+
+<span class="fc" id="L24">        UserProfileDTO.UserProfileDTOBuilder b = UserProfileDTO.builder()</span>
+<span class="fc" id="L25">                .userId(u.getUserId())</span>
+<span class="fc" id="L26">                .nickname(u.getNickname())</span>
+<span class="fc" id="L27">                .email(u.getEmail())</span>
+<span class="fc" id="L28">                .telephone(u.getTelephone());</span>
+
+        // If you added create_time column, return formatted string; otherwise ignore
+        // if (u.getCreateTime() != null) {
+        //     String ts = u.getCreateTime().format(DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd&quot;));
+        //     b.registrationTime(ts);
+        // }
+
+<span class="fc" id="L36">        return b.build();</span>
+    }
+
+    @Transactional
+    public void changePassword(Integer userId, ChangePasswordReq req) {
+<span class="fc" id="L41">        UserEntity u = userRepository.findById(userId)</span>
+<span class="fc" id="L42">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;USER_NOT_FOUND:&quot; + userId));</span>
+
+        // Handle null/empty values uniformly
+<span class="fc bfc" id="L45" title="All 2 branches covered.">        String current = req.getCurrentPassword() == null ? &quot;&quot; : req.getCurrentPassword().trim();</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        String newPwd  = req.getNewPassword() == null ? &quot;&quot; : req.getNewPassword().trim();</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        String confirm = req.getConfirmNewPassword() == null ? &quot;&quot; : req.getConfirmNewPassword().trim();</span>
+
+        // 1) Check if old password is correct
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (!passwordEncoder.matches(current, u.getPasswordHash())) {</span>
+<span class="fc" id="L51">            throw new IllegalArgumentException(&quot;CURRENT_PASSWORD_INCORRECT&quot;);</span>
+        }
+
+        // 2) New password must match confirmed password
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (!newPwd.equals(confirm)) {</span>
+<span class="fc" id="L56">            throw new IllegalArgumentException(&quot;NEW_PASSWORD_MISMATCH&quot;);</span>
+        }
+
+        // 3) New password cannot be the same as old password (optional but recommended)
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (passwordEncoder.matches(newPwd, u.getPasswordHash())) {</span>
+<span class="fc" id="L61">            throw new IllegalArgumentException(&quot;NEW_PASSWORD_SAME_AS_OLD&quot;);</span>
+        }
+
+        // 4) Strength validation (consistent with registration)
+<span class="fc bfc" id="L65" title="All 4 branches covered.">        boolean strong = newPwd.length() &gt;= 8 &amp;&amp; newPwd.length() &lt;= 64</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">                &amp;&amp; newPwd.chars().anyMatch(Character::isUpperCase)</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">                &amp;&amp; newPwd.chars().anyMatch(Character::isDigit);</span>
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        if (!strong) {</span>
+<span class="fc" id="L69">            throw new IllegalArgumentException(&quot;WEAK_PASSWORD&quot;);</span>
+        }
+
+        // 5) Generate hash and save
+<span class="fc" id="L73">        u.setPasswordHash(passwordEncoder.encode(newPwd));</span>
+        // If there's an update timestamp field, can update it here:
+        // u.setUpdatedAt(Instant.now());
+
+<span class="fc" id="L77">        userRepository.save(u);</span>
+<span class="fc" id="L78">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AdminUserManagementService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">AdminUserManagementService.java</span></div><h1>AdminUserManagementService.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import usyd.library_reservation_system.library_reservation_system.dto.AdminActionResponse;
+import usyd.library_reservation_system.library_reservation_system.dto.AdminUserSummaryDTO;
+import usyd.library_reservation_system.library_reservation_system.model.UserEntity;
+import usyd.library_reservation_system.library_reservation_system.repository.UserRepository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class AdminUserManagementService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    // 1) Fuzzy search by nickname
+    public List&lt;AdminUserSummaryDTO&gt; searchByNickname(String nickname) {
+<span class="fc" id="L25">        return userRepository.findByNicknameContainingIgnoreCase(nickname).stream()</span>
+<span class="fc" id="L26">                .map(u -&gt; AdminUserSummaryDTO.builder()</span>
+<span class="fc" id="L27">                        .userId(u.getUserId())</span>
+<span class="fc" id="L28">                        .nickname(u.getNickname())</span>
+<span class="fc" id="L29">                        .email(u.getEmail())</span>
+<span class="fc" id="L30">                        .telephone(u.getTelephone())</span>
+<span class="fc" id="L31">                        .isActive(u.getIsActive())</span>
+<span class="fc" id="L32">                        .build())</span>
+<span class="fc" id="L33">                .toList();</span>
+    }
+
+    // 2) Reset to default password (stored as hash)
+    public AdminActionResponse resetPasswordToDefault(Integer userId, String defaultRawPassword) {
+<span class="fc" id="L38">        UserEntity u = userRepository.findById(userId)</span>
+<span class="fc" id="L39">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;user not found: &quot; + userId));</span>
+<span class="fc" id="L40">        u.setPasswordHash(passwordEncoder.encode(defaultRawPassword));</span>
+<span class="fc" id="L41">        userRepository.save(u);</span>
+
+<span class="fc" id="L43">        return AdminActionResponse.builder()</span>
+<span class="fc" id="L44">                .userId(userId)</span>
+<span class="fc" id="L45">                .message(&quot;Password reset to default at &quot; + LocalDateTime.now())</span>
+<span class="fc" id="L46">                .build();</span>
+    }
+
+    // Ban user
+    public void banUser(Integer userId){
+<span class="fc" id="L51">        UserEntity u = userRepository.findById(userId)</span>
+<span class="fc" id="L52">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;user not found: &quot; + userId));</span>
+<span class="fc" id="L53">        u.setIsActive(false);</span>
+<span class="fc" id="L54">        userRepository.save(u);</span>
+<span class="fc" id="L55">    }</span>
+
+    // Unban user
+    public void unbanUser(Integer userId){
+<span class="fc" id="L59">        UserEntity u = userRepository.findById(userId)</span>
+<span class="fc" id="L60">                .orElseThrow(() -&gt; new IllegalArgumentException(&quot;user not found: &quot; + userId));</span>
+<span class="fc" id="L61">        u.setIsActive(true);</span>
+<span class="fc" id="L62">        userRepository.save(u);</span>
+<span class="fc" id="L63">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

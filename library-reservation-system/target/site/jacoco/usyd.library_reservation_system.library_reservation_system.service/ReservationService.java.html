@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReservationService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">library-reservation-system</a> &gt; <a href="index.source.html" class="el_package">usyd.library_reservation_system.library_reservation_system.service</a> &gt; <span class="el_source">ReservationService.java</span></div><h1>ReservationService.java</h1><pre class="source lang-java linenums">package usyd.library_reservation_system.library_reservation_system.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import usyd.library_reservation_system.library_reservation_system.dto.AdminReservationDTO;
+import usyd.library_reservation_system.library_reservation_system.dto.ReservationResponseDTO;
+import usyd.library_reservation_system.library_reservation_system.model.Book;
+import usyd.library_reservation_system.library_reservation_system.model.Reservation;
+import usyd.library_reservation_system.library_reservation_system.model.UserEntity;
+import usyd.library_reservation_system.library_reservation_system.repository.BookRepository;
+import usyd.library_reservation_system.library_reservation_system.repository.ReservationRepository;
+import usyd.library_reservation_system.library_reservation_system.repository.UserRepository;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+@Service
+public class ReservationService {
+
+    private final BookRepository bookRepository;
+    private final ReservationRepository reservationRepository;
+    private final UserRepository userRepository;
+
+    public ReservationService(BookRepository bookRepository,
+                              ReservationRepository reservationRepository,
+<span class="fc" id="L29">                              UserRepository userRepository) {</span>
+<span class="fc" id="L30">        this.bookRepository = bookRepository;</span>
+<span class="fc" id="L31">        this.reservationRepository = reservationRepository;</span>
+<span class="fc" id="L32">        this.userRepository = userRepository;</span>
+<span class="fc" id="L33">    }</span>
+
+    /**
+     * User reserves a book
+     */
+    @Transactional
+    public ReservationResponseDTO reserveBook(Integer userId, Integer bookId) {
+<span class="fc" id="L40">        Optional&lt;UserEntity&gt; userOpt = userRepository.findById(userId);</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        if (userOpt.isEmpty()) {</span>
+<span class="fc" id="L42">            return new ReservationResponseDTO(&quot;User not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L45">        Optional&lt;Book&gt; bookOpt = bookRepository.findById(bookId);</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (bookOpt.isEmpty()) {</span>
+<span class="fc" id="L47">            return new ReservationResponseDTO(&quot;Book not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L50">        Book book = bookOpt.get();</span>
+
+<span class="fc" id="L52">        Reservation reservation = new Reservation();</span>
+<span class="fc" id="L53">        reservation.setUserId(userId);</span>
+<span class="fc" id="L54">        reservation.setBookId(bookId);</span>
+<span class="fc" id="L55">        reservation.setCreateDate(LocalDateTime.now());</span>
+
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (book.getQuantity() &gt; 0) {</span>
+            // Has stock
+<span class="fc" id="L59">            reservation.setStatus((byte) 1); // Assigned/Available for pickup</span>
+<span class="fc" id="L60">            book.setQuantity(book.getQuantity() - 1);</span>
+<span class="fc" id="L61">            book.setNumReservation(book.getNumReservation() + 1);</span>
+<span class="fc" id="L62">            bookRepository.save(book);</span>
+        } else {
+            // No stock, queuing
+<span class="fc" id="L65">            reservation.setStatus((byte) 0); // Queuing</span>
+<span class="fc" id="L66">            book.setNumReservation(book.getNumReservation() + 1);</span>
+<span class="fc" id="L67">            bookRepository.save(book);</span>
+        }
+
+<span class="fc" id="L70">        reservationRepository.save(reservation);</span>
+
+<span class="fc" id="L72">        return new ReservationResponseDTO(&quot;Reservation successful&quot;, reservation.getStatus());</span>
+    }
+
+    @Transactional
+    public ReservationResponseDTO pickupBook(Integer reservationId) {
+<span class="fc" id="L77">        Optional&lt;Reservation&gt; resOpt = reservationRepository.findById(reservationId);</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        if (resOpt.isEmpty()) {</span>
+<span class="fc" id="L79">            return new ReservationResponseDTO(&quot;Reservation not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L82">        Reservation reservation = resOpt.get();</span>
+
+        // Only status=1 can be changed to picked up
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        if (reservation.getStatus() != 1) {</span>
+<span class="fc" id="L86">            return new ReservationResponseDTO(&quot;Reservation is not in available for pickup state&quot;, reservation.getStatus());</span>
+        }
+
+<span class="fc" id="L89">        reservation.setStatus((byte) 4); // Picked up</span>
+<span class="fc" id="L90">        reservation.setTakeDate(LocalDate.now());</span>
+<span class="fc" id="L91">        reservationRepository.save(reservation);</span>
+
+<span class="fc" id="L93">        return new ReservationResponseDTO(&quot;User has picked up the book, status updated to picked up&quot;, (byte) 4);</span>
+    }
+
+    @Transactional
+    public ReservationResponseDTO cancelReservation(Integer userId, Integer reservationId) {
+<span class="fc" id="L98">        Optional&lt;Reservation&gt; resOpt = reservationRepository.findById(reservationId);</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (resOpt.isEmpty()) {</span>
+<span class="fc" id="L100">            return new ReservationResponseDTO(&quot;Reservation not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L103">        Reservation reservation = resOpt.get();</span>
+
+        // Verify if it's the current user's reservation
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (!reservation.getUserId().equals(userId)) {</span>
+<span class="fc" id="L107">            return new ReservationResponseDTO(&quot;No permission to cancel others' reservation&quot;, (byte) -1);</span>
+        }
+
+        // Already cancelled or returned, no repeat operation allowed
+<span class="fc bfc" id="L111" title="All 4 branches covered.">        if (reservation.getStatus() == 2 || reservation.getStatus() == 3) {</span>
+<span class="fc" id="L112">            return new ReservationResponseDTO(&quot;Reservation is already completed or cancelled&quot;, reservation.getStatus());</span>
+        }
+
+        // Update status to cancelled
+<span class="fc" id="L116">        Byte oldStatus = reservation.getStatus();</span>
+<span class="fc" id="L117">        reservation.setStatus((byte) 3); // 3=Cancelled</span>
+<span class="fc" id="L118">        reservationRepository.save(reservation);</span>
+
+        // If previously assigned, need to return stock
+<span class="fc bfc" id="L121" title="All 2 branches covered.">        if (oldStatus == 1) {</span>
+<span class="fc" id="L122">            Optional&lt;Book&gt; bookOpt = bookRepository.findById(reservation.getBookId());</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">            if (bookOpt.isPresent()) {</span>
+<span class="fc" id="L124">                Book book = bookOpt.get();</span>
+<span class="fc" id="L125">                book.setQuantity(book.getQuantity() + 1);</span>
+<span class="fc" id="L126">                book.setNumReservation(Math.max(0, book.getNumReservation() - 1));</span>
+<span class="fc" id="L127">                bookRepository.save(book);</span>
+
+                // TODO: Auto-assignment logic can be triggered here, assign to next queuing user
+                // Trigger auto assignment (if someone is queuing)
+<span class="fc" id="L131">                ReservationResponseDTO autoAssignResult = autoAssignNextUser(book.getBookId());</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">                if (autoAssignResult.getStatus() == 1) {</span>
+<span class="fc" id="L133">                    return new ReservationResponseDTO(</span>
+<span class="fc" id="L134">                            &quot;Return successful, automatically assigned to next user: &quot; + autoAssignResult.getMessage(),</span>
+<span class="fc" id="L135">                            (byte) 2</span>
+                    );
+                }
+            }
+        }
+
+<span class="fc" id="L141">        return new ReservationResponseDTO(&quot;Cancellation successful&quot;, reservation.getStatus());</span>
+    }
+
+    @Transactional
+    public ReservationResponseDTO autoAssignNextUser(Integer bookId) {
+<span class="fc" id="L146">        Optional&lt;Book&gt; bookOpt = bookRepository.findById(bookId);</span>
+<span class="fc bfc" id="L147" title="All 2 branches covered.">        if (bookOpt.isEmpty()) {</span>
+<span class="fc" id="L148">            return new ReservationResponseDTO(&quot;Book not found&quot;, (byte) -1);</span>
+        }
+<span class="fc" id="L150">        Book book = bookOpt.get();</span>
+
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        if (book.getQuantity() &lt;= 0) {</span>
+<span class="fc" id="L153">            return new ReservationResponseDTO(&quot;Insufficient stock, unable to assign&quot;, (byte) -1);</span>
+        }
+
+        // Find earliest queuing user
+<span class="fc" id="L157">        List&lt;Reservation&gt; waitingList = reservationRepository.findByBookIdAndStatusOrderByCreateDateAsc(bookId, (byte) 0);</span>
+
+<span class="fc bfc" id="L159" title="All 2 branches covered.">        if (waitingList.isEmpty()) {</span>
+<span class="fc" id="L160">            return new ReservationResponseDTO(&quot;No users in queue&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L163">        Reservation nextReservation = waitingList.get(0);</span>
+
+        // Update status to assigned
+<span class="fc" id="L166">        nextReservation.setStatus((byte) 1);</span>
+<span class="fc" id="L167">        reservationRepository.save(nextReservation);</span>
+
+        // Decrement stock
+<span class="fc" id="L170">        book.setQuantity(book.getQuantity() - 1);</span>
+<span class="fc" id="L171">        bookRepository.save(book);</span>
+
+<span class="fc" id="L173">        return new ReservationResponseDTO(&quot;Assigned to user ID: &quot; + nextReservation.getUserId(), (byte) 1);</span>
+    }
+
+    @Transactional
+    public ReservationResponseDTO returnBook(Integer reservationId) {
+<span class="fc" id="L178">        System.out.println(&quot;🔙 ReturnBook called for reservationId: &quot; + reservationId);</span>
+        
+<span class="fc" id="L180">        Optional&lt;Reservation&gt; resOpt = reservationRepository.findById(reservationId);</span>
+<span class="fc bfc" id="L181" title="All 2 branches covered.">        if (resOpt.isEmpty()) {</span>
+<span class="fc" id="L182">            System.out.println(&quot;🔙 Reservation not found: &quot; + reservationId);</span>
+<span class="fc" id="L183">            return new ReservationResponseDTO(&quot;Reservation not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L186">        Reservation reservation = resOpt.get();</span>
+<span class="fc" id="L187">        System.out.println(&quot;🔙 Found reservation: &quot; + reservation.getReservationId() + &quot;, status: &quot; + reservation.getStatus());</span>
+
+        // Only borrowed status (4) allows return
+<span class="fc bfc" id="L190" title="All 2 branches covered.">        if (reservation.getStatus() != 4) {</span>
+<span class="fc" id="L191">            System.out.println(&quot;🔙 Reservation not in returnable state: &quot; + reservation.getStatus());</span>
+<span class="fc" id="L192">            return new ReservationResponseDTO(&quot;Reservation is not in returnable state&quot;, reservation.getStatus());</span>
+        }
+
+        // Update status to returned
+<span class="fc" id="L196">        reservation.setStatus((byte) 2); // Returned</span>
+<span class="fc" id="L197">        reservation.setReturnDate(LocalDate.now());</span>
+<span class="fc" id="L198">        reservationRepository.save(reservation);</span>
+<span class="fc" id="L199">        System.out.println(&quot;🔙 Reservation status updated to 2 (returned)&quot;);</span>
+
+        // Return one copy to stock
+<span class="fc" id="L202">        Optional&lt;Book&gt; bookOpt = bookRepository.findById(reservation.getBookId());</span>
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        if (bookOpt.isPresent()) {</span>
+<span class="fc" id="L204">            Book book = bookOpt.get();</span>
+<span class="fc" id="L205">            book.setQuantity(book.getQuantity() + 1);</span>
+<span class="fc" id="L206">            bookRepository.save(book);</span>
+
+            // Trigger auto assignment (if someone is queuing)
+<span class="fc" id="L209">            ReservationResponseDTO autoAssignResult = autoAssignNextUser(book.getBookId());</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">            if (autoAssignResult.getStatus() == 1) {</span>
+<span class="fc" id="L211">                return new ReservationResponseDTO(</span>
+<span class="fc" id="L212">                        &quot;Return successful, automatically assigned to next user: &quot; + autoAssignResult.getMessage(),</span>
+<span class="fc" id="L213">                        (byte) 2</span>
+                );
+            }
+        }
+
+<span class="fc" id="L218">        return new ReservationResponseDTO(&quot;Return successful&quot;, (byte) 2);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AdminReservationDTO&gt; getAllReservations(Byte status) {
+<span class="fc" id="L223">        List&lt;Reservation&gt; reservations = reservationRepository.findAll();</span>
+
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        if (status == null) {</span>
+<span class="fc" id="L226">            reservations = reservationRepository.findAll();</span>
+        } else {
+<span class="fc" id="L228">            reservations = reservationRepository.findByStatus(status);</span>
+        }
+
+<span class="fc" id="L231">        return reservations.stream().map(res -&gt; {</span>
+<span class="fc" id="L232">            String bookName = bookRepository.findById(res.getBookId())</span>
+<span class="fc" id="L233">                    .map(Book::getBookName)</span>
+<span class="fc" id="L234">                    .orElse(&quot;Unknown Book&quot;);</span>
+
+<span class="fc" id="L236">            String userNickname = userRepository.findById(res.getUserId())</span>
+<span class="fc" id="L237">                    .map(UserEntity::getNickname)</span>
+<span class="fc" id="L238">                    .orElse(&quot;Unknown User&quot;);</span>
+
+<span class="fc" id="L240">            return new AdminReservationDTO(</span>
+<span class="fc" id="L241">                    res.getReservationId(),</span>
+<span class="fc" id="L242">                    res.getBookId(),  // Add bookId</span>
+                    bookName,
+                    userNickname,
+<span class="fc" id="L245">                    res.getCreateDate(),</span>
+<span class="fc" id="L246">                    res.getTakeDate(),</span>
+<span class="fc" id="L247">                    res.getReturnDate(),</span>
+<span class="fc" id="L248">                    res.getStatus()</span>
+            );
+<span class="fc" id="L250">        }).collect(Collectors.toList());</span>
+    }
+
+    @Transactional
+    public ReservationResponseDTO approveTakeBook(Integer reservationId) {
+<span class="fc" id="L255">        Optional&lt;Reservation&gt; resOpt = reservationRepository.findById(reservationId);</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">        if (resOpt.isEmpty()) {</span>
+<span class="fc" id="L257">            return new ReservationResponseDTO(&quot;Reservation not found&quot;, (byte) -1);</span>
+        }
+
+<span class="fc" id="L260">        Reservation reservation = resOpt.get();</span>
+
+        // Only status=1 can be changed to picked up
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        if (reservation.getStatus() != 1) {</span>
+<span class="fc" id="L264">            return new ReservationResponseDTO(&quot;Reservation is not in available for pickup state&quot;, reservation.getStatus());</span>
+        }
+
+        // Update status to picked up
+<span class="fc" id="L268">        reservation.setStatus((byte) 4);</span>
+<span class="fc" id="L269">        reservation.setTakeDate(LocalDate.now());</span>
+<span class="fc" id="L270">        reservationRepository.save(reservation);</span>
+
+<span class="fc" id="L272">        return new ReservationResponseDTO(&quot;Pickup confirmed&quot;, (byte) 4);</span>
+    }
+
+    /**
+     * Get user's reservation list
+     */
+    @Transactional(readOnly = true)
+    public List&lt;AdminReservationDTO&gt; getUserReservations(Integer userId) {
+<span class="fc" id="L280">        List&lt;Reservation&gt; reservations = reservationRepository.findByUserIdOrderByCreateDateDesc(userId);</span>
+
+<span class="fc" id="L282">        return reservations.stream().map(res -&gt; {</span>
+<span class="fc" id="L283">            String bookName = bookRepository.findById(res.getBookId())</span>
+<span class="fc" id="L284">                    .map(Book::getBookName)</span>
+<span class="fc" id="L285">                    .orElse(&quot;Unknown Book&quot;);</span>
+
+<span class="fc" id="L287">            String userNickname = userRepository.findById(res.getUserId())</span>
+<span class="fc" id="L288">                    .map(UserEntity::getNickname)</span>
+<span class="fc" id="L289">                    .orElse(&quot;Unknown User&quot;);</span>
+
+<span class="fc" id="L291">            return new AdminReservationDTO(</span>
+<span class="fc" id="L292">                    res.getReservationId(),</span>
+<span class="fc" id="L293">                    res.getBookId(),  // Add bookId</span>
+                    bookName,
+                    userNickname,
+<span class="fc" id="L296">                    res.getCreateDate(),</span>
+<span class="fc" id="L297">                    res.getTakeDate(),</span>
+<span class="fc" id="L298">                    res.getReturnDate(),</span>
+<span class="fc" id="L299">                    res.getStatus()</span>
+            );
+<span class="fc" id="L301">        }).collect(Collectors.toList());</span>
+    }
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
